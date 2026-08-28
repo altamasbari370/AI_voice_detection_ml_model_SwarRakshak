@@ -1,0 +1,15 @@
+# Python Virtual Environment
+.venv/
+
+# Python Cache Files
+__pycache__/
+*.pyc
+
+# Heavy Datasets (Do not upload!)
+data/
+test_samples/
+*.wav
+*.mp3
+
+# IDE Settings
+.idea/
