@@ -4,6 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)]()
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg?logo=pytorch&logoColor=white)]()
 [![FastAPI](https://img.shields.io/badge/FastAPI-Production_Ready-009688.svg?logo=fastapi&logoColor=white)]()
+**🟢 [Click Here to Test the Live API Demo (Swagger UI)](https://ai-voice-detection-ml-model-swarrakshak.onrender.com/docs)**
 
 > **Built for Build with Bharat 2.0:** Protecting Digital India from AI voice cloning, digital arrest scams, and financial impersonation.
 
