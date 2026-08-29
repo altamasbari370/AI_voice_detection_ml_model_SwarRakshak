@@ -25,7 +25,7 @@ import io
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator, Dict, Optional
+from typing import AsyncIterator, Optional
 
 import torch
 import torchaudio
@@ -89,7 +89,7 @@ def setup_device() -> torch.device:
     if torch.cuda.is_available():
         device = torch.device("cuda")
         gpu_name = torch.cuda.get_device_name(device)
-        total_vram_gb = torch.cuda.get_device_properties(device).total_memory / (1024 ** 3)
+        total_vram_gb = torch.cuda.get_device_properties(device).total_memory / (1024**3)
         logger.info("CUDA available — using GPU: %s (%.2f GB VRAM)", gpu_name, total_vram_gb)
     else:
         device = torch.device("cpu")
@@ -98,17 +98,15 @@ def setup_device() -> torch.device:
     return device
 
 
-def load_model_checkpoint(model: LCNNClassifier, checkpoint_path: Path, device: torch.device) -> bool:
+def load_model_checkpoint(
+    model: LCNNClassifier, checkpoint_path: Path, device: torch.device
+) -> bool:
     """
     Load model weights from `checkpoint_path` into `model`.
 
     Handles the checkpoint format saved by train.py:
         {"model_state_dict": ..., "epoch": int, "val_loss": float}
     as well as a bare state_dict, for flexibility.
-
-    Returns:
-        True if weights were loaded successfully, False otherwise (the
-        model is left with its randomly-initialized weights in that case).
     """
     if not checkpoint_path.is_file():
         logger.error("Checkpoint file not found at %s", checkpoint_path.resolve())
@@ -125,11 +123,8 @@ def load_model_checkpoint(model: LCNNClassifier, checkpoint_path: Path, device: 
             state_dict = checkpoint["model_state_dict"]
             epoch = checkpoint.get("epoch", "unknown")
             val_loss = checkpoint.get("val_loss", "unknown")
-            logger.info(
-                "Loading checkpoint (epoch=%s, val_loss=%s)", epoch, val_loss
-            )
+            logger.info("Loading checkpoint (epoch=%s, val_loss=%s)", epoch, val_loss)
         else:
-            # Fall back to treating the loaded object as a bare state_dict.
             state_dict = checkpoint
             logger.info("Loading checkpoint as a bare state_dict")
 
@@ -154,9 +149,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     pipeline.extractor = SpectrogramExtractor(device=pipeline.device.type)
     pipeline.model = LCNNClassifier().to(pipeline.device)
 
-    pipeline.model_loaded = load_model_checkpoint(
-        pipeline.model, CHECKPOINT_PATH, pipeline.device
-    )
+    pipeline.model_loaded = load_model_checkpoint(pipeline.model, CHECKPOINT_PATH, pipeline.device)
     if not pipeline.model_loaded:
         logger.warning(
             "Server starting WITHOUT valid trained weights — "
@@ -176,18 +169,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Shutting down inference pipeline")
 
 
-from fastapi import FastAPI
-
 app = FastAPI(
     title="🛡️ SwarRakshak AI - Voice Deepfake Detection API",
     description="""
-    ### 📌 How to Test the Model:
-    1. Click on the **POST /predict** bar below.
-    2. Click the **"Try it out"** button on the top right.
-    3. Click **"Choose File"** and upload any `.wav` audio sample.
-    4. Click the blue **"Execute"** button to view real-time classification and confidence score.
+### 📌 How to Test the Model:
+1. Click on the **POST /predict** bar below.
+2. Click the **"Try it out"** button on the top right.
+3. Click **"Choose File"** and upload any `.wav` audio sample.
+4. Click the blue **"Execute"** button to view real-time classification and confidence score.
     """,
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -210,11 +202,7 @@ def _validate_upload(file: UploadFile) -> None:
 def _load_and_standardize_waveform(audio_bytes: bytes, filename: str) -> torch.Tensor:
     """
     Load raw audio bytes into a standardized 1-D waveform tensor: mono,
-    resampled to TARGET_SR, and padded/truncated to exactly
-    TARGET_SAMPLES.
-
-    Raises:
-        HTTPException(400): If the bytes cannot be decoded as valid audio.
+    resampled to TARGET_SR, and padded/truncated to exactly TARGET_SAMPLES.
     """
     try:
         buffer = io.BytesIO(audio_bytes)
@@ -227,24 +215,15 @@ def _load_and_standardize_waveform(audio_bytes: bytes, filename: str) -> torch.T
         ) from exc
 
     if waveform.numel() == 0:
-        raise HTTPException(
-            status_code=400, detail=f"'{filename}' contains no audio samples"
-        )
+        raise HTTPException(status_code=400, detail=f"'{filename}' contains no audio samples")
 
-    # Convert multi-channel audio to mono by averaging across channels.
     if waveform.shape[0] > 1:
         waveform = waveform.mean(dim=0, keepdim=True)
 
-    # Resample if the file's native sample rate differs from target.
     if original_sr != TARGET_SR:
         resampler = torchaudio.transforms.Resample(orig_freq=original_sr, new_freq=TARGET_SR)
         waveform = resampler(waveform)
 
-    # Standardize length: pad with zeros if short, truncate from the start
-    # (keep the tail of the clip) if long — matches AudioDataset's
-    # truncation direction in datasets/audio_dataset.py exactly, so
-    # inference sees the same relative audio content the model was
-    # trained on.
     num_samples = waveform.shape[-1]
     if num_samples < TARGET_SAMPLES:
         pad_amount = TARGET_SAMPLES - num_samples
@@ -271,27 +250,11 @@ async def health() -> HealthResponse:
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict(file: UploadFile = File(...)) -> PredictionResponse:
-    """
-    Run deepfake/spoof detection on an uploaded audio file.
-
-    Args:
-        file: An uploaded .wav audio file.
-
-    Returns:
-        PredictionResponse with the spoof probability, binary prediction,
-        and confidence percentage.
-
-    Raises:
-        HTTPException(400): If the file is missing, has an unsupported
-            extension, or cannot be decoded as valid audio.
-        HTTPException(500): If model inference fails unexpectedly.
-    """
+    """Run deepfake/spoof detection on an uploaded audio file."""
     _validate_upload(file)
 
     if pipeline.model is None or pipeline.extractor is None or pipeline.device is None:
-        raise HTTPException(
-            status_code=500, detail="Inference pipeline is not initialized"
-        )
+        raise HTTPException(status_code=500, detail="Inference pipeline is not initialized")
 
     try:
         audio_bytes = await file.read()
@@ -302,9 +265,7 @@ async def predict(file: UploadFile = File(...)) -> PredictionResponse:
         ) from exc
 
     if not audio_bytes:
-        raise HTTPException(
-            status_code=400, detail=f"Uploaded file '{file.filename}' is empty"
-        )
+        raise HTTPException(status_code=400, detail=f"Uploaded file '{file.filename}' is empty")
 
     waveform = _load_and_standardize_waveform(audio_bytes, file.filename)
 
@@ -325,9 +286,7 @@ async def predict(file: UploadFile = File(...)) -> PredictionResponse:
         ) from exc
 
     prediction = "FAKE" if spoof_probability >= SPOOF_THRESHOLD else "REAL"
-    confidence = (
-        spoof_probability if prediction == "FAKE" else 1.0 - spoof_probability
-    ) * 100.0
+    confidence = (spoof_probability if prediction == "FAKE" else 1.0 - spoof_probability) * 100.0
 
     result = PredictionResponse(
         filename=file.filename,
