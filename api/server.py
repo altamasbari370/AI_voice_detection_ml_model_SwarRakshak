@@ -170,7 +170,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="🛡️ SwarRakshak AI - Voice Deepfake Detection API",
+    title="🛡️ SwarRakshak AI - Voice Deepfake Detection",
     description="""
 ### 📌 How to Test the Model:
 1. Click on the **POST /predict** bar below.
