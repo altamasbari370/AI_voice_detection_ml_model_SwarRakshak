@@ -176,10 +176,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Shutting down inference pipeline")
 
 
+from fastapi import FastAPI
+
 app = FastAPI(
-    title="Audio Deepfake Detection API",
-    description="Upload a short audio clip to check for voice cloning / spoofing.",
-    lifespan=lifespan,
+    title="🛡️ SwarRakshak AI - Voice Deepfake Detection API",
+    description="""
+    ### 📌 How to Test the Model:
+    1. Click on the **POST /predict** bar below.
+    2. Click the **"Try it out"** button on the top right.
+    3. Click **"Choose File"** and upload any `.wav` audio sample.
+    4. Click the blue **"Execute"** button to view real-time classification and confidence score.
+    """,
+    version="1.0.0",
 )
 
 
